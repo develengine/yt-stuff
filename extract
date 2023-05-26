@@ -1,0 +1,7 @@
+#! /bin/sh
+
+./extract_usr "$1" | while read -r line
+do
+    ./extract_rss "$line"
+done
+

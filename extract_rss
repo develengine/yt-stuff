@@ -1,0 +1,6 @@
+#! /bin/sh
+
+hook="https:\/\/www.youtube.com\/feeds\/videos.xml"
+
+curl -s "$1" | grep "$hook" | sed -e "s/^.*$hook/$hook/" -e "s/\".*$//" | head -n 1
+

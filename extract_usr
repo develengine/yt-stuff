@@ -1,0 +1,6 @@
+#! /bin/sh
+
+hook="href=\"\/@"
+
+grep "$hook" $1 | sed -e "s/^.*$hook/https:\/\/www.youtube.com\/@/" -e "s/\">$//"
+
