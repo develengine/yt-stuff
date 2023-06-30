@@ -16,40 +16,9 @@
 #include "utils.h"
 #include "vid_format.h"
 
-// NOTE: If DYNAMIC_BUILD is enabled, we try to link the code for
-//       creating content dynamically from .so file, otherwise we
-//       just include the stuff into here.
+// TODO: Redo properly.
 #include "ser_content.h"
-
-#ifndef DYNAMIC_BUILD
-    #define BRUH
-    #include "ser_content.c"
-#else
-    ser_content_so_t content = {0};
-    struct timespec content_mod_time = {0};
-
-    static char content_copy_path[] = "./ser_content_cpy_0000";
-#endif
-
-static inline void cpy_file(const char *src_path, const char *dst_path)
-{
-    FILE *src = fopen(src_path, "rb");
-    file_check(src, src_path);
-
-    FILE *dst = fopen(dst_path, "wb");
-    file_check(dst, dst_path);
-
-    uint8_t buffer[1024];
-    size_t read;
-
-    do {
-        read = fread(buffer, 1, sizeof(buffer), src);
-        fwrite(buffer, 1, read, dst);
-    } while (read == sizeof(buffer));
-
-    fclose(src);
-    fclose(dst);
-}
+#include "ser_content.c"
 
 
 #define PORT "61666"
@@ -72,11 +41,13 @@ static inline struct stat file_stat(const char *path)
     return statbuf;
 }
 
+
 static bool timespec_eq(struct timespec t1, struct timespec t2)
 {
     return t1.tv_sec  == t2.tv_sec
         && t1.tv_nsec == t2.tv_nsec;
 }
+
 
 static int create_socket(void)
 {
@@ -118,6 +89,7 @@ static int create_socket(void)
     return socket_fd;
 }
 
+
 static int accept_connection(int socket_fd)
 {
     struct sockaddr conn;
@@ -131,6 +103,7 @@ static int accept_connection(int socket_fd)
 
     return conn_fd;
 }
+
 
 static void read_request(int fd)
 {
@@ -150,6 +123,7 @@ static void read_request(int fd)
     }
 }
 
+
 static void write_reply(int fd, const char *reply, size_t reply_len)
 {
     if (write(fd, reply, reply_len) != reply_len) {
@@ -157,6 +131,7 @@ static void write_reply(int fd, const char *reply, size_t reply_len)
         exit(EXIT_FAILURE);
     }
 }
+
 
 static void write_reply_content(int fd, sv_t header,
                                         const char *content_type,
@@ -180,6 +155,7 @@ static void write_reply_content(int fd, sv_t header,
 
     write_reply(fd, scratch.data, scratch.size);
 }
+
 
 typedef enum
 {
@@ -220,6 +196,7 @@ static request_t parse_request(stream_t *stream)
     return (request_t) { .method = MethodInvalid };
 }
 
+
 static channels_t channels = {0};
 static arena_t response_arena = {0};
 
@@ -228,26 +205,6 @@ static struct timespec css_mod_time;
 
 static void method_get(int fd, sv_t uri)
 {
-#ifdef DYNAMIC_BUILD
-    struct timespec mod_time = file_stat("./ser_content.so").st_mtim;
-    if (!timespec_eq(mod_time, content_mod_time)) {
-        printf("\nreloading content\n\n");
-
-        if (dlclose(content.handle))
-            fprintf(stderr, "dlclose(): %s\n", dlerror());
-
-        cpy_file("./ser_content.so", content_copy_path);
-
-        ser_content_so_t c = ser_content_load(content_copy_path);
-
-        if (!c.handle)
-            exit(EXIT_FAILURE);
-
-        content = c;
-        content_mod_time = mod_time;
-    }
-#endif
-
     if (sv_is(uri, "/")) {
         write_reply_content(fd, content.header_res, "text/html", content.page1_res);
     }
@@ -318,6 +275,7 @@ static void method_get(int fd, sv_t uri)
     }
 }
 
+
 static void handle_request(int fd, request_t request)
 {
     switch (request.method) {
@@ -326,6 +284,7 @@ static void handle_request(int fd, request_t request)
         } break;
     }
 }
+
 
 static bool process_request(int fd)
 {
@@ -370,6 +329,7 @@ static bool process_request(int fd)
     return true;
 }
 
+
 #define MAX_CONNECTIONS 64
 // NOTE:  Must be 0!
 #define LISTEN_ID 0
@@ -387,11 +347,9 @@ void close_handler(int s)
     for (int i = conn_count; i >= 0; --i)
         close(connections[i].fd);
 
-    if (content.handle)
-        dlclose(content.handle);
-
     exit(EXIT_SUCCESS); 
 }
+
 
 static void register_close_handler(void)
 {
@@ -404,18 +362,10 @@ static void register_close_handler(void)
     sigaction(SIGINT, &sigIntHandler, NULL);
 }
 
+
 int main(void)
 {
     register_close_handler();
-
-#if DYNAMIC_BUILD
-    content = ser_content_load("./ser_content.so");
-
-    if (!content.handle)
-        exit(EXIT_FAILURE);
-
-    content_mod_time = file_stat("./ser_content.so").st_mtim;
-#endif
 
     int listen_fd = create_socket();
 

@@ -7,6 +7,21 @@
 #include <ctype.h>
 #include <string.h>
 
+#ifdef _DEBUG
+    #define unreachable()                                                           \
+    do {                                                                            \
+        fprintf(stderr, "%s:%d: Unreachable line reached.\n", __FILE__, __LINE__);  \
+        exit(666);                                                                  \
+    } while (0)
+#else
+    #ifdef _WIN32
+        #define unreachable()   __assume(0)
+    #else
+        #define unreachable()   __builtin_unreachable()
+    #endif
+#endif
+
+
 #define safe_read(buffer, count, stream)                                    \
 do {                                                                        \
     if (fread(buffer, sizeof(*(buffer)), count, stream) != (size_t)count) { \
@@ -104,7 +119,7 @@ static inline size_t sv_length(sv_t sv)
 
 static inline bool sv_eq(sv_t a, sv_t b)
 {
-    int a_len = sv_length(a);
+    int a_len = (int)sv_length(a);
 
     if (a_len != sv_length(b))
         return false;
@@ -222,7 +237,7 @@ static inline int arena_append_str(arena_t *arena, char *str)
 {
     size_t len = strlen(str);
 
-    return arena_append(arena, str, len);
+    return (int)arena_append(arena, str, len);
 }
 
 static inline rsv_t arena_append_sv(arena_t *arena, sv_t sv)
@@ -264,7 +279,7 @@ static inline void chew_space(stream_t *stream)
 static inline bool follows(stream_t *stream, const char *str)
 {
     int i = 0;
-    int max_i = stream->end - stream->pos;
+    int max_i = (int)(stream->end - stream->pos);
 
     for (; str[i]; ++i) {
         if (i >= max_i)
