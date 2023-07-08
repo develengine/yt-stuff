@@ -1,6 +1,6 @@
 /* TODO:
- * [ ] accept all connections at once
- * [ ] rewrite code to support non-blocking behaviour properly
+ * [X] accept all connections at once
+ * [X] rewrite code to support non-blocking behaviour properly
  */
 
 #include "utils.h"

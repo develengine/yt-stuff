@@ -105,7 +105,7 @@ static void generate_vids(arena_t *arena, channels_t *channels)
 
     char *base = channels->text.data;
 
-    for (int entry_id = 0; entry_id < channels->entry_count; ++entry_id) {
+    for (size_t entry_id = 0; entry_id < channels->entry_count; ++entry_id) {
         entry_t entry = channels->entries[entry_id];
 
         arena_append_str(arena,
@@ -145,11 +145,7 @@ static void generate_vids(arena_t *arena, channels_t *channels)
     );
 }
 
-#ifdef BRUH
 ser_content_so_t content = {
-#else
-ser_content_so_t object = {
-#endif
     .continue_res  = { .begin = continue_message,
                        .end   = continue_message + sizeof(continue_message) - 1 },
     .error_404_res = { .begin = error_404,

@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/ioctl.h>
 
 #include <netdb.h>
 #include <poll.h>
@@ -22,6 +23,7 @@
 
 
 #define PORT "61666"
+#define DATA_PATH "../data.yt"
 
 // NOTE: This isn't meant to be a proper implementation of a HTTP/1.1
 //       server. Mostly because the protocol is a piece of shit.
@@ -73,6 +75,12 @@ static int create_socket(void)
         if (socket_fd < 0)
             continue;
 
+        res = ioctl(socket_fd, FIONBIO, (char *)(&(int){ 1 }));
+        if (res < 0) {
+            fprintf(stderr, "ioctl(): %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+
         if (bind(socket_fd, rp->ai_addr, rp->ai_addrlen) == 0)
             break;
 
@@ -93,7 +101,7 @@ static int create_socket(void)
 static int accept_connection(int socket_fd)
 {
     struct sockaddr conn;
-    int conn_len = sizeof(conn);
+    unsigned conn_len = sizeof(conn);
 
     int conn_fd = accept(socket_fd, &conn, &conn_len);
     if (conn_fd < 0) {
@@ -118,7 +126,7 @@ static void read_request(int fd)
 
         fwrite(buffer, 1, len, stdout);
 
-        if (len < sizeof(buffer))
+        if (len < (ssize_t)sizeof(buffer))
             break;
     }
 }
@@ -126,7 +134,7 @@ static void read_request(int fd)
 
 static void write_reply(int fd, const char *reply, size_t reply_len)
 {
-    if (write(fd, reply, reply_len) != reply_len) {
+    if (write(fd, reply, reply_len) != (ssize_t)reply_len) {
         fprintf(stderr, "write(): %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
@@ -161,11 +169,11 @@ typedef enum
 {
     MethodGet,
 
-    MethodCount
+    METHOD_COUNT
 } method_t;
 
 
-#define MethodInvalid MethodCount
+#define MethodInvalid METHOD_COUNT
 
 typedef struct
 {
@@ -237,8 +245,8 @@ static void method_get(int fd, sv_t uri)
     }
     else if (sv_is(uri, "/vids.html")) {
         if (!channels.authors) {
-            FILE *data_f = fopen("data.yt", "r");
-            file_check(data_f, "data.yt");
+            FILE *data_f = fopen(DATA_PATH, "r");
+            file_check(data_f, DATA_PATH);
 
             int data_fd = fileno(data_f);
 
@@ -282,6 +290,8 @@ static void handle_request(int fd, request_t request)
         case MethodGet: {
             method_get(fd, request.uri);
         } break;
+
+        case METHOD_COUNT: unreachable();
     }
 }
 
@@ -305,7 +315,7 @@ static bool process_request(int fd)
 
         arena_append(&arena, buffer, len);
 
-        if (len < sizeof(buffer))
+        if (len < (ssize_t)sizeof(buffer))
             break;
     }
 
@@ -369,7 +379,7 @@ int main(void)
 
     int listen_fd = create_socket();
 
-    if  (listen(listen_fd, 5)) {
+    if (listen(listen_fd, 5)) {
         fprintf(stderr, "listen(): %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }

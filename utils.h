@@ -119,12 +119,12 @@ static inline size_t sv_length(sv_t sv)
 
 static inline bool sv_eq(sv_t a, sv_t b)
 {
-    int a_len = (int)sv_length(a);
+    size_t a_len = sv_length(a);
 
     if (a_len != sv_length(b))
         return false;
 
-    for (int i = 0; i < a_len; ++i) {
+    for (size_t i = 0; i < a_len; ++i) {
         if (a.begin[i] != b.begin[i])
             return false;
     }

@@ -4,8 +4,25 @@
 
 const char *output = "program";
 
-const char *source_files[] = {
+const char *prototype_source_files[] = {
+#ifndef _WIN32
+    "src/ser_lin.c",
+#else
     "src/ser_win.c",
+#endif
+
+    NULL
+};
+
+const char *server_source_files[] = {
+    "src/server.c",
+
+#ifndef _WIN32
+    "src/net_linux.c",
+    "src/ctrl_c_linux.c",
+#else
+    "src/net_win32.c",
+#endif
 
     NULL
 };
@@ -56,6 +73,19 @@ int main(int argc, char *argv[])
         return res;
 
     int debug = contains("debug", argc, argv);
+
+    const char **source_files = server_source_files;
+
+    int arg_pos = find("target", argc, (const char **)argv);
+
+    if (arg_pos != -1 && argc > arg_pos) {
+        if (str_eq(argv[arg_pos+1], "prototype")) {
+            source_files = prototype_source_files;
+        }
+        else if (str_eq(argv[arg_pos+1], "server")) {
+            source_files = server_source_files;
+        }
+    }
 
     res = compile_w((compile_info_t) {
         .output = output,

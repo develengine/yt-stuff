@@ -896,8 +896,10 @@ static inline int try_rebuild_self(const char *build_files[], int argc, char *ar
     compile_info_t info = { .output = argv[0], .source_files = build_files };
 
     int res = compile_w(info);
-    if (res)
+    if (res) {
+        rename(move_dest, argv[0]);
         return res;
+    }
 
     return execute_argv_w(argv);
 }
